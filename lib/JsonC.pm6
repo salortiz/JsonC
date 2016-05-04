@@ -6,7 +6,6 @@ use nqp;
 
 INIT {
     my $Lib = NativeLibs::Loader.load('libjson-c.so.2');
-    note "Loaded ",$Lib.name();
 }
 
 enum json_type <
@@ -20,8 +19,9 @@ constant type-map = Map.new(
 );
 
 enum json_tokener_error <
-  json_tokener_success json_tokener_continue json_tokener_error_depth json_tokener_error_parse_eof
-  json_tokener_error_parse_unexpected json_tokener_error_parse_null json_tokener_error_parse_boolean
+  json_tokener_success json_tokener_continue json_tokener_error_depth
+  json_tokener_error_parse_eof json_tokener_error_parse_unexpected
+  json_tokener_error_parse_null json_tokener_error_parse_boolean
   json_tokener_error_parse_number json_tokener_error_parse_array
   json_tokener_error_parse_object_key_name json_tokener_error_parse_object_key_sep
   json_tokener_error_parse_object_value_sep json_tokener_error_parse_string
@@ -29,13 +29,17 @@ enum json_tokener_error <
 >;
 
 enum json_tokener_state <
-  json_tokener_state_eatws, json_tokener_state_start, json_tokener_state_finish, json_tokener_state_null,
-  json_tokener_state_comment_start, json_tokener_state_comment, json_tokener_state_comment_eol, json_tokener_state_comment_end,
-  json_tokener_state_string, json_tokener_state_string_escape, json_tokener_state_escape_unicode, json_tokener_state_boolean,
-  json_tokener_state_number, json_tokener_state_array, json_tokener_state_array_add, json_tokener_state_array_sep,
-  json_tokener_state_object_field_start, json_tokener_state_object_field, json_tokener_state_object_field_end, json_tokener_state_object_value,
-  json_tokener_state_object_value_add, json_tokener_state_object_sep, json_tokener_state_array_after_sep, json_tokener_state_object_field_start_after_sep,
-  json_tokener_state_inf
+  json_tokener_state_eatws json_tokener_state_start json_tokener_state_finish
+  json_tokener_state_null json_tokener_state_comment_start json_tokener_state_comment
+  json_tokener_state_comment_eol json_tokener_state_comment_end
+  json_tokener_state_string json_tokener_state_string_escape
+  json_tokener_state_escape_unicode json_tokener_state_boolean
+  json_tokener_state_number json_tokener_state_array json_tokener_state_array_add
+  json_tokener_state_array_sep json_tokener_state_object_field_start
+  json_tokener_state_object_field json_tokener_state_object_field_end
+  json_tokener_state_object_value json_tokener_state_object_value_add
+  json_tokener_state_object_sep json_tokener_state_array_after_sep
+  json_tokener_state_object_field_start_after_sep json_tokener_state_inf
 >;
 
 constant JSON_OBJECT_DEF_HASH_ENTRIES =  16;
@@ -46,11 +50,10 @@ constant JSON_C_TO_STRING_NOZERO = (1 +< 2);
 
 sub err-desc(uint32 -->Str) is symbol('json_tokener_error_desc') is native { * }
 
+my class JSON-P is repr('CPointer') { ... }
+my class JSON-A is repr('CPointer') { ... }
 
-class JSON-P is repr('CPointer') { ... }
-class JSON-A is repr('CPointer') { ... }
-
-class JSON is repr('CPointer') {
+our class JSON is repr('CPointer') {
 
     my class Tokener is repr('CPointer') {
 
@@ -63,6 +66,7 @@ class JSON is repr('CPointer') {
 	    has int32 $.st_pos;
 	    has int32 $.char_offset;
 	}
+
 	sub json_tokener_new(-->Tokener) is native { * }
 	sub json_tokener_set_flags(Tokener,int32) is native { * }
 	method new(:$strict) {
@@ -110,13 +114,12 @@ class JSON is repr('CPointer') {
 	given self.get_type {
 	    when 0 { Any }
 	    when 1 { Bool(json_object_get_boolean(self)) }
-	    when 2 { json_object_get_double(self).Rat }
+	    when 2 { json_object_get_double(self).Rat } #FIXME Rat!?
 	    when 3 { json_object_get_int64(self) }
-	    when 4 {
+	    when 4 { # Associative
 		if $perl {
 		    my %a;
-		    my $lht = self.json_object_get_object;
-		    my $head = $lht.head;
+		    my $head = self.json_object_get_object.head;
 		    while $head.defined {
 			my $v = $head.v;
 			%a{$head.k} = $v.defined ?? $v.unmarshal(:perl) !! Any;
@@ -127,11 +130,11 @@ class JSON is repr('CPointer') {
 		    nativecast(JSON-A, self)
 		}
 	    }
-	    when 5 {
+	    when 5 { #Positional
 		if $perl {
 		    my @a;
-		    my $e = json_object_array_length(self);
-		    for ^$e {
+		    my $elems = json_object_array_length(self);
+		    for ^$elems {
 			with json_object_array_get_idx(self, $_) {
 			    @a.push: .unmarshal(:perl);
 			}
@@ -245,8 +248,10 @@ class JSON is repr('CPointer') {
 
     sub json_object_to_json_string_ext(JSON, uint32 -->Str) is native { * }
     multi method Str(JSON:D: :$pretty) {
-	my $flags = 1;
-	$flags = $pretty ?? 2 !! 0 if $pretty.defined;
+
+	my $flags = JSON_C_TO_STRING_SPACED;
+	$flags = $pretty ?? JSON_C_TO_STRING_PRETTY !! JSON_C_TO_STRING_PLAIN
+	    if $pretty.defined;
 	json_object_to_json_string_ext(self, $flags);
     }
 
