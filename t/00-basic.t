@@ -1,7 +1,7 @@
 use v6;
 use Test;
 
-plan 22;
+plan 27;
 
 use-ok 'JsonC';
 
@@ -9,44 +9,55 @@ my $Str = '{ "foo": "mamá", "arr": [ 1, 4, 10 ] }';
 
 my \JSON = ::('JsonC::JSON');
 
-ok JSON !~~ Failure, 'Class JSON ready';
+ok JSON !~~ Failure,         'Class JSON ready';
 
 my $json = JSON.new($Str);
 
 ok $json, "Created";
 isa-ok $json,	JSON;
 does-ok $json,  Associative;
-
-is $json.Str, $Str,  "The spected Str";
-
-is $json.elems,  2,	     'Two elems';
-
-isa-ok $json.get-type, Hash, "Expected type (Hash)";
-
 ok Hash ~~ $json,	     "Smart match";  # Please note the order
 
-ok $json<foo>:exists,	     'Exists';
+given $json {
+   is .Str, $Str,  "The spected Str";
 
-is $json<foo>, 'mamá',	     "Expected '$json<foo>'";
+   is .elems,  2,	     'Two elems';
 
-nok $json<bar>:exists,	    'Not exists';
+   isa-ok .get-type, Hash,   "Expected type (Hash)";
+
+   is %$_.keys.sort, <arr foo>, 'The keys';
+
+   ok $_<foo>:exists,	     'Exists';
+
+   is $_<foo>, 'mamá',	     "Expected '$json<foo>'";
+
+   nok $_<bar>:exists,	     'Not exists';
+
+}
 
 ok (my @a := $json<arr>),   'arr exists';
 
-isa-ok @a,   JSON;
+isa-ok @a,                  JSON;
 
-does-ok @a,  Positional;
+does-ok @a,                 Positional;
 
 isa-ok @a.get-type, Array,  "Expected type (Array)";
 
-ok Array ~~ @a,		    "Smart match works";  # Please note the order
+nok @a ~~ Array,	    'Beware, no a real Array';
 
-is ~@a, "[ 1, 4, 10 ]",	    "Seems good: @a[]";
+isa-ok @a, 'JsonC::JSON-P', 'In fact a JsonC::JSON-P';
+
+ok Array ~~ @a,		    "Reverse Smart match works";
+
+is @a, '[ 1, 4, 10 ]',	    "Seems good: @a[]";
 
 is @a.elems,  3,	    'size';
-is +@a,       3,	    'via cohersion';
+is +@a,       3,	    'Numeric';
 
 is @a[1],  4,		    'a four';
+
+ok (my @c := Array(@a)),    'Cast works';
+ok @a == @c,		    'Same';
 
 # An speed test.
 my sub findProyectsFile(Str $prefix?) {
@@ -70,14 +81,9 @@ my sub findProyectsFile(Str $prefix?) {
 with findProyectsFile() -> $_ {
     diag "Trying to read $_";
     my $start = now;
-    ok (my $pf = JSON.new-from-file($_)),   'Can read file';
-    diag "Parsed in { now - $start }s. $pf.elems() projects";
-
-    my @a = $pf.Array;
-    for @a.pick(10) {
-	say $_<description>;
-    }
-
+    ok (my @pf := JSON.new-from-file($_)),   'Can read file';
+    diag "Last module is '{@pf[@pf.elems-1]<description>}";
+    diag "Parsed at { now - $start }s. @pf.elems() projects";
 } else {
     skip 'No file for test',  1;
 }

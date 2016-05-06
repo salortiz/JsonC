@@ -2,9 +2,13 @@ use v6;
 use Test;
 use JsonC;
 
-my @s = 
+# Originally this test, stolen from JSON::Fast, was testing for Rat, not Num,
+# but neither JSON spec nor json-c in fact can't handle Perl6's Rat.
+# So I prefer not to lie.
+
+my @s =
         'Int'            => [ 1 ],
-        'Rat'            => [ 3.2 ],
+        'Num'            => [ 3.2e0 ],
         'Str'            => [ 'one' ],
         'Str with quote' => [ '"foo"'],
         'Undef'          => [ {}, 1 ],
@@ -12,13 +16,13 @@ my @s =
         'Non-ASCII'      => [ 'möp stüff' ],
         'Empty Array'    => [ ],
         'Array of Int'   => [ 1, 2, 3, 123123123 ],
-        'Array of Num'   => [ 1.3, 2.8, 32323423.4, 4 ],
+        'Array of Num'   => [ 1.3e0, 2.8e0, 32323423.4e0, 4 ],
         'Array of Str'   => [ <one two three gazooba> ],
         'Array of Undef' => [ Any, Any ],
         'Empty Hash'     => {},
         'Undef Hash Val' => { key => Any },
         'Hash of Int'    => { :one(1), :two(2), :three(3) },
-        'Hash of Num'    => { :one-and-some[1], :almost-pie(3.3) },
+        'Hash of Num'    => { :one-and-some[1], :almost-pie(3.3e0) },
         'Hash of Str'    => { :one<yes_one>, :two<but_two> },
         'Array of Stuff' => [ { 'A hash' => 1 }, [<an array again>], 2],
         'Hash of Stuff'  =>
@@ -29,7 +33,7 @@ my @s =
                                 keyfour  => 4,
                                 keyfive  => False,
                                 keysix   => True,
-                                keyseven => 3.2,
+                                keyseven => 3.2e0,
                             };
 
 plan +@s;
