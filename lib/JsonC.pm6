@@ -1,6 +1,6 @@
 use v6;
 
-unit module JsonC:ver<0.0.1>:auth<salortiz>;
+unit module JsonC:ver<0.0.2>:auth<salortiz>;
 use NativeLibs;
 use nqp;
 
@@ -42,18 +42,18 @@ enum json_tokener_state <
   json_tokener_state_object_field_start_after_sep json_tokener_state_inf
 >;
 
-constant JSON_OBJECT_DEF_HASH_ENTRIES =  16;
-constant JSON_C_TO_STRING_PLAIN	=         0;
-constant JSON_C_TO_STRING_SPACED = (1 +< 0);
-constant JSON_C_TO_STRING_PRETTY = (1 +< 1);
+constant JSON_OBJECT_DEF_HASH_ENTRIES = 16;
+constant JSON_C_TO_STRING_PLAIN  =       0;
+constant JSON_C_TO_STRING_SPACED =  1 +< 0;
+constant JSON_C_TO_STRING_PRETTY =  1 +< 1;
 constant JSON_C_TO_STRING_NOZERO = (1 +< 2);
 
 sub err-desc(uint32 -->Str) is symbol('json_tokener_error_desc') is native { * }
 
-my class JSON-P is repr('CPointer') { ... }
-my class JSON-A is repr('CPointer') { ... }
+our class JSON-P is export is repr('CPointer') { ... }
+our class JSON-A is export is repr('CPointer') { ... }
 
-our class JSON is repr('CPointer') {
+our class JSON is export is repr('CPointer') {
 
     my class Tokener is repr('CPointer') {
 
@@ -112,9 +112,9 @@ our class JSON is repr('CPointer') {
     method unmarshal(:$perl) {
 	# We don't use the json_type enum for speed.
 	given self.get_type {
-	    when 0 { Any }
+	    when 0 { Nil }
 	    when 1 { Bool(json_object_get_boolean(self)) }
-	    when 2 { json_object_get_double(self).Rat } #FIXME Rat!?
+	    when 2 { json_object_get_double(self) }
 	    when 3 { json_object_get_int64(self) }
 	    when 4 { # Associative
 		if $perl {
@@ -161,14 +161,15 @@ our class JSON is repr('CPointer') {
     sub json_object_object_add(JSON, Str, JSON) is native { * }
     method marshal(Any \v) {
 	given v {
-	    when JSON { self }
-	    when Str { json_object_new_string($_) }
-	    when Bool { json_object_new_boolean(+$_) }
-	    when Int { json_object_new_int64($_) }
-	    when Num { json_object_new_double($_) }
-	    when Rat { json_object_new_double(.Num) }
+	    when JSON   { self }
+	    when Str:D  { json_object_new_string($_) }
+	    when Bool:D { json_object_new_boolean(+$_) }
+	    when Int:D  { json_object_new_int64($_) }
+	    when Num:D  { json_object_new_double($_) }
+	    when Rat:D  { json_object_new_double(.Num) }
 	    when Associative {
 		my \obj = json_object_new_object();
+		succeed obj unless .DEFINITE;
 		for %($_) -> (:key($k), :value($v)) {
 		    json_object_object_add(obj, $k,
 			($v.defined ?? JSON.marshal($v) !! JSON)
@@ -178,6 +179,7 @@ our class JSON is repr('CPointer') {
 	    }
 	    when Positional {
 		my \arr = json_object_new_array();
+		succeed arr unless .DEFINITE;
 		when Iterable {
 		    for @($_) {
 			json_object_array_add(arr,
@@ -201,13 +203,18 @@ our class JSON is repr('CPointer') {
 	}
     }
 
-    multi method new(JSON:) {
-	json_object_new_object();
+    multi method new(JSON: :$array) {
+	$array ?? nativecast(JSON-P, json_object_new_array)
+               !! nativecast(JSON-A, json_object_new_object);
     }
 
     sub json_object_put(JSON) is native { * }
     method dispose(JSON:D:) {
 	json_object_put(self);
+    }
+    sub json_object_get(JSON -->JSON) is native { * }
+    method externate(JSON:D) {
+        json_object_get(JSON);
     }
 
     sub json_object_from_file(Str -->JSON) is native { * }
@@ -248,7 +255,6 @@ our class JSON is repr('CPointer') {
 
     sub json_object_to_json_string_ext(JSON, uint32 -->Str) is native { * }
     multi method Str(JSON:D: :$pretty) {
-
 	my $flags = JSON_C_TO_STRING_SPACED;
 	$flags = $pretty ?? JSON_C_TO_STRING_PRETTY !! JSON_C_TO_STRING_PLAIN
 	    if $pretty.defined;
@@ -268,34 +274,74 @@ our class JSON is repr('CPointer') {
 	self.elems;
     }
 
+    multi method perl(JSON:D:) {
+	self.^name ~ ".new('" ~ self.Str ~ "')";
+    }
+    multi method gist(JSON:D:) {
+	'JSON<' ~ json_type(self.get_type) ~ '>' ~ self.Str.substr(0,70) ~ '…';
+    }
+    method Perl(JSON:D:) {
+	self.unmarshal(:perl);
+    }
 }
 
 class JSON-P is JSON does Positional does Iterable {
-    sub json_object_array_length(JSON -->uint32) is native { * };
-    method elems() {
+
+    method new() {
+        nextwith :array;
+    }
+    sub json_object_array_length(JSON --> uint32) is native { * };
+    multi method elems() {
 	json_object_array_length(self);
     }
 
     sub json_object_array_get_idx(JSON, uint32 -->JSON) is native { * };
-    method AT-POS(Int() $idx) {
+    method AT-POS(::?CLASS:D: $idx, :$perl) {
 	with json_object_array_get_idx(self, $idx) {
-	    .unmarshal;
+	    .unmarshal(:$perl);
 	} else { Nil }
     }
 
-    method iterator() {
+    sub json_object_array_put_idx(JSON, uint32, JSON --> int32) is native { * }
+    multi method ASSIGN-POS(::?CLASS:D: $idx, JSON $new) {
+        json_object_array_put_idx(self, $idx, $new);
+        $new;
+    }
+    multi method ASSIGN-POS(::?CLASS:D: $idx, Any \v) {
+        json_object_array_put_idx(self,$idx, my $new = JSON.marshal(v));
+        $new;
+    }
+
+    method iterator(:$perl) {
 	(gather {
 	    my $elems = self.elems;
 	    my int $i = 0;
 	    while $i < $elems {
-		take self.AT-POS($i);
+		take self.AT-POS($i, :$perl);
 		++$i;
 	    }
 	}).iterator;
     }
 
-    method Array() {
-	Array.from-iterator(self.iterator);
+    multi method Array(JSON:D:) {
+	Array.from-iterator(self.iterator(:perl));
+    }
+
+    sub json_object_array_add(JSON, JSON --> int32) is native { * }
+    multi method push(JSON:D: JSON:D \new) {
+	json_object_array_add(self, new);
+        self;
+    }
+    multi method push(JSON:D: Slip \val) {
+        self.push: $_ for @(val);
+    }
+    multi method push(JSON:D: \v) {
+        json_object_array_add(self, JSON.marshal(v));
+        self;
+    }
+    multi method push(JSON:D: **@values) {
+        self.push: $_ for @values;
+        self;
     }
 }
 
@@ -318,29 +364,51 @@ class JSON-A is JSON does Associative does Iterable {
 	json_object_object_length(self);
     }
 
+    sub json_object_object_del(JSON, Str) is native { * }
+    method DELETE-KEY(Str $key) {
+        if json_object_object_get_ex(self, $key, my JSON $new = JSON.bless) {
+            if (my $res = $new.unmarshal) ~~ JSON:D {
+                # Inc refcount to compensate delete,
+                $res.externate;
+            }
+            json_object_object_del(self, $key);
+            $res;
+        } else {
+            Nil;
+        }
+    }
+
+    sub json_object_object_add(JSON, Str, JSON) is native { * }
+    multi method ASSIGN-KEY(Str $key, JSON $new) {
+        json_object_object_add(self, $key, $new);
+    }
+
+    multi method ASSIGN-KEY(Str $key, Any \v) {
+        json_object_object_add(self, $key, JSON.marshal(v));
+    }
+
     method pairs() {
 	my $lht = self.json_object_get_object;
 	my $head = $lht.head;
 	gather { while $head.defined {
 	    my $v = $head.v;
+	    my $next = $head.next; # Allow to delete current.
 	    take ($head.k => ($v.defined ?? $v.unmarshal !! Any));
-	    $head = $head.next;
+	    $head = $next;
 	} }
     }
-    method iterator {
-	self.pairs.iterator;
-    }
+    method iterator() { self.pairs.iterator }
+    method keys()     { self.pairs.map: { .key } }
+    method values()   { self.pairs.map: { .value } }
+    method kv()       { self.pairs.map: { |(.key, .value) } }
 }
 
 sub from-json(Str $json) is export {
-    with JSON.new($json) {
-	.unmarshal(:perl);
-    } else {
-	.fail;
-    }
+    JSON.new($json).unmarshal(:perl);
 }
 
 sub to-json(Any \v, :$pretty) is export {
     JSON.marshal(v).Str(:$pretty);
 }
 
+# vim: ft=perl6 et

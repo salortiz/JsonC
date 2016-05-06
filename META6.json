@@ -1,7 +1,7 @@
 {
     "perl" : "6.c",
     "name" : "JsonC",
-    "version" : "0.0.1",
+    "version" : "0.0.2",
     "auth" : "github:salortiz",
     "description" : "Native bindings for JSON-C library",
     "depends" : [ "NativeLibs" ],
