@@ -11,14 +11,14 @@
 	"JsonC" : "lib/JsonC.pm6"
     },
     "repo-type" : "git",
-    "source-url": "git://github.com/salortiz/p6-Json-C.git",
+    "source-url": "git://github.com/salortiz/JsonC.git",
     "authors" : "Salvador Ortiz <sortiz@cpan.com>",
     "licence" : "artistic_2",
     "support" : {
 	"email" : "sog@msg.com.mx",
 	"source" : [
-	    "git://github.com/salortiz/p6-LMDB.git",
-	    "https://github.com/salortiz/p6-LMDB.git"
+	    "git://github.com/salortiz/JsonC.git",
+	    "https://github.com/salortiz/JsonC.git"
 	]
     },
     "tags" : [
