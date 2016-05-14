@@ -4,9 +4,7 @@ unit module JsonC:ver<0.0.3>:auth<salortiz>;
 use NativeLibs;
 use nqp;
 
-INIT {
-    my $Lib = NativeLibs::Loader.load('libjson-c.so.2');
-}
+my $Lib;
 
 enum json_type <
   type-null type-boolean type-double type-int
@@ -109,7 +107,7 @@ our class JSON is export is repr('CPointer') {
     sub json_object_get_double(JSON --> num64) is native { * }
     sub json_object_array_length(JSON -->uint32) is native { * };
     sub json_object_array_get_idx(JSON, uint32 -->JSON) is native { * };
-    method unmarshal(:$perl) {
+    method unmarshal($level = 0; :$perl) {
         # We don't use the json_type enum for speed.
         given self.get_type {
             when 0 { Nil }
@@ -122,7 +120,7 @@ our class JSON is export is repr('CPointer') {
                     my $head = self.json_object_get_object.head;
                     while $head.defined {
                         my $v = $head.v;
-                        %a{$head.k} = $v.defined ?? $v.unmarshal(:perl) !! Any;
+                        %a{$head.k} = $v.defined ?? $v.unmarshal($level+1, :perl) !! Any;
                         $head = $head.next;
                     }
                     %a;
@@ -132,17 +130,13 @@ our class JSON is export is repr('CPointer') {
             }
             when 5 { #Positional
                 if $perl {
-                    my @a;
-                    my $elems = json_object_array_length(self);
-                    for ^$elems {
+                    my $itr = ^json_object_array_length(self);
+                    $itr .= hyper(:degree(3),:batch(10)) unless $level;
+                    $itr.map({
                         with json_object_array_get_idx(self, $_) {
-                            @a.push: .unmarshal(:perl);
-                        }
-                        else {
-                            @a.push: Any
-                        }
-                    }
-                    @a;
+                            .unmarshal($level+1, :perl);
+                        } else { Any }
+                    }).Array;
                 } else {
                     nativecast(JSON-P, self)
                 }
@@ -209,8 +203,8 @@ our class JSON is export is repr('CPointer') {
     }
 
     sub json_object_put(JSON) is native { * }
-    method dispose(JSON:D:) {
-        json_object_put(self);
+    method dispose(JSON:D $self:) {
+        json_object_put($self);
     }
 
     sub json_object_get(JSON -->JSON) is native { * }
@@ -314,9 +308,9 @@ class JSON-P is JSON does Positional does Iterable {
     }
 
     method iterator(:$perl) {
+        my int $elems = self.elems;
+        my int $i = 0;
         (gather {
-            my $elems = self.elems;
-            my int $i = 0;
             while $i < $elems {
                 take self.AT-POS($i, :$perl);
                 ++$i;
@@ -415,6 +409,12 @@ sub to-json(Any \v, :$pretty) is export {
     with JSON.marshal(v) {
         LEAVE { .dispose }
         .Str(:$pretty);
+    }
+}
+
+INIT {
+    without $Lib = NativeLibs::Loader.load('libjson-c.so.2') {
+        .fail;
     }
 }
 

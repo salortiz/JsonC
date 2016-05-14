@@ -24,7 +24,7 @@ my sub findProyectsFile(Str $prefix?) {
 
 with findProyectsFile() -> $_ {
     say "Testing with $_";
-    say "Trying to read with JsonC:";
+    say "Trying to read with JsonC (raw):";
     {
 	my $start = now;
 	my @a := JsonC::JSON.new-from-file($_);
@@ -32,8 +32,7 @@ with findProyectsFile() -> $_ {
 	say "Parsed in { now - $start }s. @a.elems() projects";
 	my $s1 = now;
 	my %b = @a.first({$_<name> eq 'DBIish'});
-	say %b<description>;
-	say "DBDish located in { now - $s1 }s";
+	say "DBDish '%b<description>' located in { now - $s1 }s";
 	say "Total time: { now - $start }";
     }
     say "---";
@@ -45,8 +44,7 @@ with findProyectsFile() -> $_ {
 	say "Parsed in { now - $start }s. @a.elems() projects";
 	my $s1 = now;
 	my %b = @a.first({$_<name> eq 'DBIish'});
-	say %b<description>;
-	say "DBDish located in { now - $s1 }s";
+	say "DBDish '%b<description>' located in { now - $s1 }s";
 	say "Total time: { now - $start }";
     }
     say "---";
@@ -58,8 +56,7 @@ with findProyectsFile() -> $_ {
 	say "Parsed in { now - $start }s. @a.elems() projects";
 	my $s1 = now;
 	my %b = @a.first({$_<name> eq 'DBIish'});
-	say %b<description>;
-	say "DBDish located in { now - $s1 }s";
+	say "DBDish '%b<description>' located in { now - $s1 }s";
 	say "Total time: { now - $start }";
     }
 }
