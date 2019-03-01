@@ -16,10 +16,7 @@
     "licence" : "Artistic-2.0",
     "support" : {
 	"email" : "sog@msg.mx",
-	"source" : [
-	    "git://github.com/salortiz/JsonC.git",
-	    "https://github.com/salortiz/JsonC.git"
-	]
+	"source" : "https://github.com/salortiz/JsonC.git"
     },
     "tags" : [
 	"kv", "json-c", "JSON"
