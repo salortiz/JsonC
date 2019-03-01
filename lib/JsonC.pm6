@@ -1,10 +1,12 @@
 use v6;
 
-unit module JsonC:ver<0.0.3>:auth<salortiz>;
+unit module JsonC:ver<0.0.4>:auth<salortiz>;
 use NativeLibs;
+use NativeCall; # Hope can be removed soon
 use nqp;
 
 my $Lib;
+my \hyperpar := \(:4degree, :10batch);
 
 enum json_type <
   type-null type-boolean type-double type-int
@@ -82,6 +84,7 @@ our class JSON is export is repr('CPointer') {
 
     my class lh_entry is repr('CStruct') {
         has Str $.k;
+        has int32 $.k_is_const;
         has JSON $.v;
         has lh_entry $.next;
         has lh_entry $.prev;
@@ -90,14 +93,9 @@ our class JSON is export is repr('CPointer') {
     my class lh_table is repr('CStruct') {
         has int32 $.size;
         has int32 $.count;
-        has int32 $.collisions;
-        has int32 $.resizes;
-        has int32 $.lookups;
-        has int32 $.inserts;
-        has int32 $.deletes;
-        has Str   $.name;
         has lh_entry $.head;
         has lh_entry $.tail;
+        has lh_entry $.table;
     }
 
     method json_object_get_object(-->lh_table) is native { * };
@@ -131,7 +129,7 @@ our class JSON is export is repr('CPointer') {
             when 5 { #Positional
                 if $perl {
                     my $itr = ^json_object_array_length(self);
-                    $itr .= hyper(:degree(3),:batch(10)) unless $level;
+                    $itr .= hyper(|hyperpar) unless $level;
                     $itr.map({
                         with json_object_array_get_idx(self, $_) {
                             .unmarshal($level+1, :perl);
@@ -341,7 +339,7 @@ class JSON-P is JSON does Positional does Iterable {
 }
 
 class JSON-A is JSON does Associative does Iterable {
-    sub json_object_object_get_ex(JSON, Str, JSON is rw -->uint32) is native { * };
+    sub json_object_object_get_ex(JSON, Str, JSON is rw --> uint32) is native { * };
     multi method AT-KEY(Str $key) {
         my JSON $new = JSON.bless;
         if json_object_object_get_ex(self, $key, $new) {
@@ -413,7 +411,7 @@ sub to-json(Any \v, :$pretty) is export {
 }
 
 INIT {
-    without $Lib = NativeLibs::Loader.load('libjson-c.so.2') {
+    without $Lib = NativeLibs::Loader.load('libjson-c.so.4') {
         .fail;
     }
 }

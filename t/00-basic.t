@@ -1,9 +1,9 @@
 use v6;
 use Test;
 
-plan 27;
+plan 26;
 
-use-ok 'JsonC';
+need JsonC;
 
 my $Str = '{ "foo": "mamá", "arr": [ 1, 4, 10 ] }';
 
