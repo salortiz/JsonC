@@ -1,10 +1,10 @@
 {
     "perl" : "6.c",
     "name" : "JsonC",
-    "version" : "0.0.4",
+    "version" : "0.0.5",
     "auth" : "github:salortiz",
     "description" : "Native bindings for JSON-C library",
-    "depends" : [ "NativeLibs" ],
+    "depends" : [ "NativeLibs:ver<0.0.5+>" ],
     "build-depends" : [ ],
     "test-depends" : [ ],
     "provides" : {
