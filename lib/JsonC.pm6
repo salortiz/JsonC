@@ -1,8 +1,7 @@
 use v6;
 
 unit module JsonC:ver<0.0.5>:auth<salortiz>;
-use NativeLibs:ver<0.0.5>;
-use NativeCall; # Hope can be removed soon
+use NativeLibs:ver<0.0.7>;
 use nqp;
 
 my $Lib;
@@ -227,6 +226,7 @@ our class JSON is export is repr('CPointer') {
         with json_tokener_parse_ex($tok, $buf, $buf.bytes) {
             if $strict {
                 my $i = $tok.internal;
+                # TODO check strictures
             }
             .unmarshal;
         } else {

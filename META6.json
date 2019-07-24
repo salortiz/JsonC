@@ -4,7 +4,7 @@
     "version" : "0.0.5",
     "auth" : "github:salortiz",
     "description" : "Native bindings for JSON-C library",
-    "depends" : [ "NativeLibs:ver<0.0.5+>" ],
+    "depends" : [ "NativeLibs:ver<0.0.6+>" ],
     "build-depends" : [ ],
     "test-depends" : [ ],
     "provides" : {
