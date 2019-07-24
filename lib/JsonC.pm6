@@ -1,6 +1,6 @@
 use v6;
 
-unit module JsonC:ver<0.0.5>:auth<salortiz>;
+unit module JsonC:ver<0.0.6>:auth<salortiz>;
 use NativeLibs:ver<0.0.7>;
 use nqp;
 
