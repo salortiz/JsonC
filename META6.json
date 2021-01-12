@@ -1,24 +1,24 @@
 {
     "perl" : "6.c",
     "name" : "JsonC",
-    "version" : "0.0.6",
+    "version" : "0.0.7",
     "auth" : "github:salortiz",
     "description" : "Native bindings for JSON-C library",
-    "depends" : [ "NativeLibs:ver<0.0.6+>" ],
+    "depends" : [ "NativeLibs:ver<0.0.8+>" ],
     "build-depends" : [ ],
     "test-depends" : [ ],
     "provides" : {
-	"JsonC" : "lib/JsonC.pm6"
+       "JsonC" : "lib/JsonC.pm6"
     },
     "repo-type" : "git",
     "source-url": "git://github.com/salortiz/JsonC.git",
     "authors" : "Salvador Ortiz <sortiz@cpan.com>",
     "licence" : "Artistic-2.0",
     "support" : {
-	"email" : "sog@msg.mx",
-	"source" : "https://github.com/salortiz/JsonC.git"
+       "email" : "sog@msg.mx",
+       "source" : "https://github.com/salortiz/JsonC.git"
     },
     "tags" : [
-	"kv", "json-c", "JSON"
+       "kv", "json-c", "JSON"
     ]
 }

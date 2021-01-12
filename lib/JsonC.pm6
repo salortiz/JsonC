@@ -1,7 +1,7 @@
 use v6;
 
-unit module JsonC:ver<0.0.6>:auth<salortiz>;
-use NativeLibs:ver<0.0.7>;
+unit module JsonC:ver<0.0.7>:auth<salortiz>;
+use NativeLibs:ver<0.0.9>;
 use nqp;
 
 my $Lib;
@@ -411,7 +411,7 @@ sub to-json(Any \v, :$pretty) is export {
 }
 
 INIT {
-    without $Lib = NativeLibs::Loader.load(%*ENV<LIBJSON> || NativeLibs::cannon-name('json-c',v4)) {
+    without $Lib = NativeLibs::Loader.load(%*ENV<LIBJSON> || NativeLibs::cannon-name('json-c',v5)) {
         .fail;
     }
 }
